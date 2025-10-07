@@ -18,7 +18,7 @@ public class PlayerMovement : MonoBehaviour
         Vector3 moveDir = new Vector3(inputVector.x, 0, inputVector.y);
         
         float moveDistance =  moveSpeed * Time.deltaTime;
-        float playerRadius = .7f;
+        float playerRadius = .7f;    
         float playerHeight = 2f;
         bool canMove = !Physics.CapsuleCast(transform.position,transform.position + Vector3.up * playerHeight , playerRadius,moveDir,moveDistance);
        
@@ -26,8 +26,9 @@ public class PlayerMovement : MonoBehaviour
         if (!canMove)
         {
             //cannot move towards moveDir
+            // if we are trying to move both forwards and right 
             //Attempt only on x movement
-             Vector3 moveDirX = new Vector3(moveDir.x, 0, 0);
+             Vector3 moveDirX = new Vector3(moveDir.x, 0, 0).normalized;
             canMove = !Physics.CapsuleCast(transform.position, transform.position + Vector3.up * playerHeight, playerRadius, moveDirX, moveDistance);
             if (canMove)
             {
@@ -39,12 +40,16 @@ public class PlayerMovement : MonoBehaviour
             {
                 //cannot move towards moveDir
                 //Attempt to move on z
-                Vector3 moveDirZ = new Vector3(0, 0, moveDir.z);
+                Vector3 moveDirZ = new Vector3(0, 0, moveDir.z).normalized;
                 canMove = !Physics.CapsuleCast(transform.position, transform.position + Vector3.up * playerHeight, playerRadius, moveDirZ, moveDistance);
-                 if (canMove)
-            {
-                //move only on z direction
-                moveDir = moveDirZ;
+                if (canMove)
+                {
+                    //move only on z direction
+                    moveDir = moveDirZ;
+                }
+                else
+                {
+                  // Cannot move on any direction
             }
             }
             
