@@ -10,11 +10,34 @@ public class PlayerMovement : MonoBehaviour
     private ClearCounter clearCounter;
     [SerializeField] LayerMask counterLayerMask;
     [SerializeField] float moveSpeed = 5f;
-    Vector3 lastInteractions;
+    Vector3 lastInteraction;
 
     bool isWalking;
 
     [SerializeField] private GameInput gameInput;
+
+    void Start()
+    {
+        gameInput.OnInteractAction += GameInput_OnInteractAction;
+    }
+    private void GameInput_OnInteractAction(object sender , System.EventArgs e)
+    {
+        Vector2 inputVector = gameInput.GetVectorInputNormalized();
+        Vector3 moveDir = new Vector3(inputVector.x, 0, inputVector.y);
+        float interactDistance = 2f;
+
+        if (moveDir != Vector3.zero)
+        {
+            lastInteraction = moveDir;
+        }
+        if (Physics.Raycast(transform.position, lastInteraction, out RaycastHit raycastHit,interactDistance,counterLayerMask))
+        {
+            if (raycastHit.transform.TryGetComponent(out ClearCounter clearCounter))
+            {
+                clearCounter.Interact();
+            }  
+        }
+    }
     void Update()
     {
         HandleInteraction();
@@ -27,26 +50,35 @@ public class PlayerMovement : MonoBehaviour
 
     private void HandleInteraction()
     {
+        // HandleInteraction:
+        // Casts a ray in the last movement direction to detect counters.
+        // If a ClearCounter is hit, calls its Interact method with the player reference.
+
         Vector2 inputVector = gameInput.GetVectorInputNormalized();
         Vector3 moveDir = new Vector3(inputVector.x, 0, inputVector.y);
         float interactDistance = 2f;
 
         if (moveDir != Vector3.zero)
         {
-            lastInteractions = moveDir;
+            lastInteraction = moveDir;
         }
-        if (Physics.Raycast(transform.position, lastInteractions, out RaycastHit raycastHit,interactDistance,counterLayerMask))
+        if (Physics.Raycast(transform.position, lastInteraction, out RaycastHit raycastHit,interactDistance,counterLayerMask))
         {
             if (raycastHit.transform.TryGetComponent(out ClearCounter clearCounter))
             {
-                clearCounter.Interact();
-            }
+                
+            }  
         }
     }
     
     private void HandlePlayerMovement()
     {
-         Vector2 inputVector = gameInput.GetVectorInputNormalized();
+        // HandlePlayerMovement:
+        // Uses CapsuleCast to check if movement is possible.
+        // If blocked diagonally, tries X-only and Z-only movement.
+        // Updates position, walking state, and rotation.
+
+        Vector2 inputVector = gameInput.GetVectorInputNormalized();
         Vector3 moveDir = new Vector3(inputVector.x, 0, inputVector.y);
         
         float moveDistance =  moveSpeed * Time.deltaTime;
@@ -93,9 +125,11 @@ public class PlayerMovement : MonoBehaviour
        
 
         isWalking = moveDir != Vector3.zero;
-
-        transform.rotation = Quaternion.LookRotation(moveDir);
+        if(moveDir != Vector3.zero)
+        {
+            transform.rotation = Quaternion.LookRotation(moveDir);
+        }
         float rotationSpeed = 10f;
-        Vector3.Slerp(transform.forward, moveDir, Time.deltaTime * rotationSpeed);
+        transform.forward = Vector3.Slerp(transform.forward, moveDir, Time.deltaTime * rotationSpeed);
     }
 }
