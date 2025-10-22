@@ -1,12 +1,20 @@
 using System;
 using JetBrains.Annotations;
 using Unity.Collections;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 public class PlayerMovement : MonoBehaviour
 
 {
+    public static PlayerMovement Instance{ get; private set; }
+    public event EventHandler<OnSelectedCounterChangedEventArgs> OnSelectedCounterChanged;
+    public class OnSelectedCounterChangedEventArgs : EventArgs
+    {
+        public ClearCounter selectedCounter;
+    }
+   
     private ClearCounter clearCounter;
     [SerializeField] LayerMask counterLayerMask;
     [SerializeField] float moveSpeed = 5f;
@@ -16,28 +24,28 @@ public class PlayerMovement : MonoBehaviour
 
     [SerializeField] private GameInput gameInput;
 
+    private ClearCounter selectedCounter;
+
+    void Awake()
+    {
+        if (Instance != null)
+        {
+            Debug.Log("There is more than one player instance so the error occurs");
+        }
+        Instance = this;
+    }
+
     void Start()
     {
         gameInput.OnInteractAction += GameInput_OnInteractAction;
     }
-    private void GameInput_OnInteractAction(object sender , System.EventArgs e)
+    private void GameInput_OnInteractAction(object sender, System.EventArgs e)
     {
-        Vector2 inputVector = gameInput.GetVectorInputNormalized();
-        Vector3 moveDir = new Vector3(inputVector.x, 0, inputVector.y);
-        float interactDistance = 2f;
-
-        if (moveDir != Vector3.zero)
+        if (selectedCounter != null)
         {
-            lastInteraction = moveDir;
+            selectedCounter.Interact();
         }
-        if (Physics.Raycast(transform.position, lastInteraction, out RaycastHit raycastHit,interactDistance,counterLayerMask))
-        {
-            if (raycastHit.transform.TryGetComponent(out ClearCounter clearCounter))
-            {
-                clearCounter.Interact();
-            }  
-        }
-    }
+    }       
     void Update()
     {
         HandleInteraction();
@@ -62,15 +70,31 @@ public class PlayerMovement : MonoBehaviour
         {
             lastInteraction = moveDir;
         }
-        if (Physics.Raycast(transform.position, lastInteraction, out RaycastHit raycastHit,interactDistance,counterLayerMask))
+        if (Physics.Raycast(transform.position, lastInteraction, out RaycastHit raycastHit, interactDistance, counterLayerMask))
         {
             if (raycastHit.transform.TryGetComponent(out ClearCounter clearCounter))
             {
-                
-            }  
+                if (clearCounter != selectedCounter)
+                {
+                    SetSelectedChanged(clearCounter);
+
+               }
+
+            }
+            else
+            {
+                SetSelectedChanged(null);
+            }
+
         }
+        else
+        {
+            SetSelectedChanged(null);
+        }
+
+
     }
-    
+
     private void HandlePlayerMovement()
     {
         // HandlePlayerMovement:
@@ -80,11 +104,11 @@ public class PlayerMovement : MonoBehaviour
 
         Vector2 inputVector = gameInput.GetVectorInputNormalized();
         Vector3 moveDir = new Vector3(inputVector.x, 0, inputVector.y);
-        
-        float moveDistance =  moveSpeed * Time.deltaTime;
-        float playerRadius = .7f;    
+
+        float moveDistance = moveSpeed * Time.deltaTime;
+        float playerRadius = .7f;
         float playerHeight = 2f;
-        bool canMove = !Physics.CapsuleCast(transform.position,transform.position + Vector3.up * playerHeight , playerRadius,moveDir,moveDistance);
+        bool canMove = !Physics.CapsuleCast(transform.position, transform.position + Vector3.up * playerHeight, playerRadius, moveDir, moveDistance);
 
 
         if (!canMove)
@@ -122,14 +146,24 @@ public class PlayerMovement : MonoBehaviour
         {
             transform.position += moveDir * moveDistance; // moveDistance is the variable for moveSpeed and time.delta time which is declared above the if statement
         }
-       
+
 
         isWalking = moveDir != Vector3.zero;
-        if(moveDir != Vector3.zero)
+        if (moveDir != Vector3.zero)
         {
             transform.rotation = Quaternion.LookRotation(moveDir);
         }
         float rotationSpeed = 10f;
         transform.forward = Vector3.Slerp(transform.forward, moveDir, Time.deltaTime * rotationSpeed);
     }
+    
+    private void SetSelectedChanged(ClearCounter selectedCounter)
+    {
+        this.selectedCounter = selectedCounter;
+        OnSelectedCounterChanged?.Invoke(this, new OnSelectedCounterChangedEventArgs
+         {           selectedCounter =selectedCounter     
+              });
+    }
+   
+    
 }
